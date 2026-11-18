@@ -1,0 +1,43 @@
+name: Android source validation
+on:
+  push:
+    branches: [feature/offline-speech-integration]
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Verify source is present
+        run: |
+          test -f package.json || { echo 'Application source not uploaded'; exit 1; }
+          test -f scripts/install-android-bridge.mjs || { echo 'Android bridge missing'; exit 1; }
+      - name: Install dependencies
+        run: npm ci
+      - name: Build web assets
+        run: npm run build
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+      - name: Prepare Capacitor Android
+        run: |
+          npx cap add android
+          node scripts/install-android-bridge.mjs
+          npx cap sync android
+      - name: Compile Android
+        working-directory: android
+        run: chmod +x gradlew && ./gradlew assembleDebug --stacktrace
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: svara-debug-apk
+          path: android/app/build/outputs/apk/debug/*.apk
