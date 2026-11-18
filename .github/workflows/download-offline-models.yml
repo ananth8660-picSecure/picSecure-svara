@@ -1,0 +1,26 @@
+name: Download validated offline speech archives
+on:
+  workflow_dispatch:
+    inputs:
+      telugu_model_url:
+        description: 'Direct HTTPS URL of a verified Vosk Telugu model archive'
+        required: false
+        type: string
+jobs:
+  download:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download English, Hindi and optional Telugu
+        env:
+          TELUGU_URL: ${{ inputs.telugu_model_url }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p offline-models
+          python3 scripts/download-vosk-models.py --output offline-models ${TELUGU_URL:+--telugu-url "$TELUGU_URL"}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vosk-verified-models
+          path: offline-models/*.zip
+          retention-days: 7
