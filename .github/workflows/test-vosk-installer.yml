@@ -1,0 +1,14 @@
+name: Validate Vosk installer
+on:
+  push:
+    branches: [feature/offline-speech-integration]
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run model installer security tests
+        run: |
+          test -f scripts/test-vosk-installer.py || { echo 'Upload application source first'; exit 1; }
+          python3 scripts/test-vosk-installer.py
