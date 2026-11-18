@@ -1,0 +1,39 @@
+name: Verify offline speech model downloads
+on:
+  workflow_dispatch:
+    inputs:
+      telugu_model_url:
+        description: 'Verified direct HTTPS URL to a compatible Telugu Vosk model ZIP'
+        required: false
+        type: string
+jobs:
+  models:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download and inspect English and Hindi models
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p models
+          for entry in 'en:vosk-model-small-en-us-0.15' 'hi:vosk-model-small-hi-0.22'; do
+            lang="${entry%%:*}"
+            model="${entry#*:}"
+            curl --fail --location --retry 3 --output "models/${lang}.zip" "https://alphacephei.com/vosk/models/${model}.zip"
+            unzip -t "models/${lang}.zip" | tail -n 1
+          done
+      - name: Inspect optional Telugu model
+        if: ${{ inputs.telugu_model_url != '' }}
+        env:
+          TELUGU_URL: ${{ inputs.telugu_model_url }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "$TELUGU_URL" in https://*) ;; *) echo 'HTTPS URL required'; exit 1;; esac
+          curl --fail --location --retry 3 --output models/te.zip "$TELUGU_URL"
+          unzip -t models/te.zip | tail -n 1
+      - name: Upload validated archives
+        uses: actions/upload-artifact@v4
+        with:
+          name: vosk-offline-model-archives
+          path: models/*.zip
+          retention-days: 7
